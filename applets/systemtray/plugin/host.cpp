@@ -253,10 +253,12 @@ void HostPrivate::setupProtocol(Protocol *protocol)
 void Host::taskStatusChanged(SystemTray::Task *task)
 {
     if (task) {
-        if (!d->showTask(task)) {
-            d->shownTasksModel->removeTask(task);
+        if (d->showTask(task)) {
+            d->hiddenTasksModel->removeTask(task);
+            d->shownTasksModel->addTask(task);
         } else {
             d->hiddenTasksModel->addTask(task);
+            d->shownTasksModel->removeTask(task);
         }
     }
 }
