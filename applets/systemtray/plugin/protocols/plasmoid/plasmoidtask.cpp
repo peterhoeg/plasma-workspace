@@ -59,6 +59,8 @@ PlasmoidTask::PlasmoidTask(const QString &packageName, int appletId, Plasma::Con
 
         m_taskGraphicsObject->setCoronaPackage(package);
         QMetaObject::invokeMethod(m_taskGraphicsObject, "init", Qt::DirectConnection);
+
+        qDebug() << "DAVE **************************8";
         qWarning()<<m_taskGraphicsObject->property("compactRepresentationItem");
         qWarning()<<m_taskGraphicsObject->property("fullRepresentationItem");
 

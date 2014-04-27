@@ -36,6 +36,7 @@
 
 #include "protocols/plasmoid/plasmoidprotocol.h"
 #include "protocols/dbussystemtray/dbussystemtrayprotocol.h"
+#include "tasklistmodel.h"
 
 #define TIMEOUT 100
 
@@ -81,12 +82,13 @@ class HostPrivate {
 public:
     HostPrivate(Host *host)
         : q(host),
-          rootItem(0)
+          rootItem(0),
+          shownTasksModel(new TaskListModel(host)),
+          hiddenTasksModel(new TaskListModel(host))
     {
     }
     void setupProtocol(Protocol *protocol);
-    bool showTask(Task *task);
-
+    bool showTask(Task *task) const;
 
     Host *q;
 
@@ -95,31 +97,24 @@ public:
 
     // Keep references to the list to avoid full refreshes
     //QList<SystemTray::Task*> tasks;
-    QList<SystemTray::Task*> shownTasks;
-    QList<SystemTray::Task*> hiddenTasks;
+//     QList<SystemTray::Task*> shownTasks;
+//     QList<SystemTray::Task*> hiddenTasks;
     //all tasks that are in hidden categories
-    QList<SystemTray::Task*> discardedTasks;
+//     QList<SystemTray::Task*> discardedTasks;
 
     QSet<Task::Category> shownCategories;
 
-    QQmlListProperty<SystemTray::Task> shownTasksDeclarative;
-    QQmlListProperty<SystemTray::Task> hiddenTasksDeclarative;
-    //QQmlListProperty<SystemTray::Task> tasksDeclarative;
+    TaskListModel *shownTasksModel;
+    TaskListModel *hiddenTasksModel;
 
     QStringList categories;
-
-    QTimer compressionTimer;
 };
 
 Host::Host(QObject* parent) :
     QObject(parent),
     d(new HostPrivate(this))
 {
-//        connect(m_manager, &Manager::tasksChanged, this, &Host::tasksChanged);
-
-    QTimer::singleShot(2000, this, SLOT(init())); // FIXME: remove timer
-    //init();
-    connect(&d->compressionTimer, &QTimer::timeout, this, &Host::compressionTimeout);
+    QTimer::singleShot(0, this, SLOT(init()));
 }
 
 Host::~Host()
@@ -129,45 +124,24 @@ Host::~Host()
 
 void Host::init()
 {
-    initTasks();
-
     d->setupProtocol(new SystemTray::DBusSystemTrayProtocol(this));
     d->setupProtocol(new SystemTray::PlasmoidProtocol(this));
 
+    initTasks();
 
     emit categoriesChanged();
 }
-
-void Host::compressionTimeout()
-{
-    qCDebug(SYSTEMTRAY) << "ST2 tasksChanged";
-    emit tasksChanged();
-    d->compressionTimer.stop();
-
-}
-
 
 void Host::initTasks()
 {
     QList<SystemTray::Task*> allTasks = tasks();
     foreach (SystemTray::Task *task, allTasks) {
         if (d->showTask(task)) {
-            d->shownTasks.append(task);
+            d->shownTasksModel->addTask(task);
         } else {
-            d->hiddenTasks.append(task);
+            d->hiddenTasksModel->addTask(task);
         }
     }
-
-    qSort(d->shownTasks.begin(), d->shownTasks.end(), taskLessThan);
-    qSort(d->hiddenTasks.begin(), d->hiddenTasks.end(), taskLessThan);
-
-    QQmlListProperty<SystemTray::Task> _shown(this, d->shownTasks);
-    d->shownTasksDeclarative = _shown;
-
-    QQmlListProperty<SystemTray::Task> _hidden(this, d->hiddenTasks);
-    d->hiddenTasksDeclarative = _hidden;
-    qCDebug(SYSTEMTRAY) << "ST2 init starting timer" << TIMEOUT;
-    d->compressionTimer.start(TIMEOUT);
 }
 
 QQuickItem* Host::rootItem()
@@ -195,7 +169,7 @@ void Host::setCategoryShown(int cat, bool shown)
     if (shown) {
         if (!d->shownCategories.contains((Task::Category)cat)) {
             d->shownCategories.insert((Task::Category)cat);
-            foreach (Task *task, d->discardedTasks) {
+            foreach (Task *task, d->tasks) {
                 if (d->shownCategories.contains(task->category())) {
                     addTask(task);
                 }
@@ -207,7 +181,6 @@ void Host::setCategoryShown(int cat, bool shown)
             foreach (Task *task, d->tasks) {
                 if (!d->shownCategories.contains(task->category())) {
                     removeTask(task);
-                    d->discardedTasks.append(task);
                 }
             }
         }
@@ -221,12 +194,7 @@ QList<Task*> Host::tasks() const
 
 void Host::addTask(Task *task)
 {
-    if (!d->shownCategories.contains(task->category())) {
-        d->discardedTasks.append(task);
-        return;
-    } else {
-        d->discardedTasks.removeAll(task);
-    }
+    qDebug() << "DAVE *********** ADDING ITEM ";
 
     connect(task, SIGNAL(destroyed(SystemTray::Task*)), this, SLOT(removeTask(SystemTray::Task*)));
     connect(task, SIGNAL(changedStatus()), this, SLOT(slotTaskStatusChanged()));
@@ -235,28 +203,18 @@ void Host::addTask(Task *task)
 
     d->tasks.append(task);
     if (d->showTask(task)) {
-        d->shownTasks.append(task);
-        qSort(d->shownTasks.begin(), d->shownTasks.end(), taskLessThan);
+        d->shownTasksModel->addTask(task);
     } else {
-        d->hiddenTasks.append(task);
-        qSort(d->hiddenTasks.begin(), d->hiddenTasks.end(), taskLessThan);
+        d->hiddenTasksModel->addTask(task);
     }
-    d->compressionTimer.start(TIMEOUT);
-    emit tasksChanged();
 }
 
 void Host::removeTask(Task *task)
 {
     d->tasks.removeAll(task);
     disconnect(task, 0, this, 0);
-    if (d->showTask(task)) {
-        d->shownTasks.removeAll(task);
-    } else {
-        d->hiddenTasks.removeAll(task);
-    }
-    // No compression here, as we delete the pointer to the task
-    // object behind the list's back otherwise
-    emit tasksChanged();
+    d->shownTasksModel->removeTask(task);
+    d->hiddenTasksModel->removeTask(task);
 }
 
 void Host::slotTaskStatusChanged()
@@ -271,18 +229,18 @@ void Host::slotTaskStatusChanged()
     }
 }
 
-QQmlListProperty<SystemTray::Task> Host::hiddenTasks()
+QAbstractItemModel* Host::hiddenTasks()
 {
-    return d->hiddenTasksDeclarative;
+    return d->hiddenTasksModel;
 }
 
-QQmlListProperty< Task > Host::shownTasks()
+QAbstractItemModel* Host::shownTasks()
 {
-    return d->shownTasksDeclarative;
+    return d->shownTasksModel;
 
 }
 
-bool HostPrivate::showTask(Task *task) {
+bool HostPrivate::showTask(Task *task) const {
     return task->shown() && task->status() != SystemTray::Task::Passive;
 }
 
@@ -295,22 +253,10 @@ void HostPrivate::setupProtocol(Protocol *protocol)
 void Host::taskStatusChanged(SystemTray::Task *task)
 {
     if (task) {
-        if (d->shownTasks.contains(task)) {
-            if (!d->showTask(task)) {
-                qCDebug(SYSTEMTRAY) << "ST2 Migrating shown -> hidden" << task->name();
-                d->shownTasks.removeAll(task);
-                d->hiddenTasks.append(task);
-                qSort(d->hiddenTasks.begin(), d->hiddenTasks.end(), taskLessThan);
-                d->compressionTimer.start(TIMEOUT);
-            }
-        } else if (d->hiddenTasks.contains(task)) {
-            if (d->showTask(task)) {
-                qCDebug(SYSTEMTRAY) << "ST2 Migrating hidden -> shown" << task->name();
-                d->hiddenTasks.removeAll(task);
-                d->shownTasks.append(task);
-                qSort(d->shownTasks.begin(), d->shownTasks.end(), taskLessThan);
-                d->compressionTimer.start(TIMEOUT);
-            }
+        if (!d->showTask(task)) {
+            d->shownTasksModel->removeTask(task);
+        } else {
+            d->hiddenTasksModel->addTask(task);
         }
     }
 }
