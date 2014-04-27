@@ -194,8 +194,6 @@ QList<Task*> Host::tasks() const
 
 void Host::addTask(Task *task)
 {
-    qDebug() << "DAVE *********** ADDING ITEM ";
-
     connect(task, SIGNAL(destroyed(SystemTray::Task*)), this, SLOT(removeTask(SystemTray::Task*)));
     connect(task, SIGNAL(changedStatus()), this, SLOT(slotTaskStatusChanged()));
 
