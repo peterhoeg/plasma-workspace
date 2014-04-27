@@ -43,41 +43,6 @@
 namespace SystemTray
 {
 
-static QHash<Task::Category, int> s_taskWeights;
-
-bool taskLessThan(const Task *lhs, const Task *rhs)
-{
-    /* Sorting of systemtray icons
-     *
-     * We sort (and thus group) in the following order, from high to low priority
-     * - Notifications always comes first
-     * - Category
-     * - Name
-     */
-
-    const QLatin1String _not = QLatin1String("org.kde.plasma.notifications");
-    if (lhs->taskId() == _not) {
-        return true;
-    }
-    if (rhs->taskId() == _not) {
-        return false;
-    }
-
-    if (lhs->category() != rhs->category()) {
-
-        if (s_taskWeights.isEmpty()) {
-            s_taskWeights.insert(Task::Communications, 0);
-            s_taskWeights.insert(Task::SystemServices, 1);
-            s_taskWeights.insert(Task::Hardware, 2);
-            s_taskWeights.insert(Task::ApplicationStatus, 3);
-            s_taskWeights.insert(Task::UnknownCategory, 4);
-        }
-        return s_taskWeights.value(lhs->category()) < s_taskWeights.value(rhs->category());
-    }
-
-    return lhs->name() < rhs->name();
-}
-
 class HostPrivate {
 public:
     HostPrivate(Host *host)

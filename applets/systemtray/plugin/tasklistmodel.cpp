@@ -26,6 +26,41 @@
 
 using namespace SystemTray;
 
+static QHash<Task::Category, int> s_taskWeights;
+
+bool taskLessThan(const Task *lhs, const Task *rhs)
+{
+    /* Sorting of systemtray icons
+     *
+     * We sort (and thus group) in the following order, from high to low priority
+     * - Notifications always comes first
+     * - Category
+     * - Name
+     */
+
+    const QLatin1String _not = QLatin1String("org.kde.plasma.notifications");
+    if (lhs->taskId() == _not) {
+        return true;
+    }
+    if (rhs->taskId() == _not) {
+        return false;
+    }
+
+    if (lhs->category() != rhs->category()) {
+
+        if (s_taskWeights.isEmpty()) {
+            s_taskWeights.insert(Task::Communications, 0);
+            s_taskWeights.insert(Task::SystemServices, 1);
+            s_taskWeights.insert(Task::Hardware, 2);
+            s_taskWeights.insert(Task::ApplicationStatus, 3);
+            s_taskWeights.insert(Task::UnknownCategory, 4);
+        }
+        return s_taskWeights.value(lhs->category()) < s_taskWeights.value(rhs->category());
+    }
+
+    return lhs->name() < rhs->name();
+}
+
 TaskListModel::TaskListModel(QObject *parent):
     QAbstractListModel(parent)
 {
@@ -58,16 +93,13 @@ QList< Task* > TaskListModel::tasks() const
 
 void SystemTray::TaskListModel::addTask(Task* task)
 {
-    //TODO insert at the right place instead
-    //qLowerBound()
-    //get index as int
-    //insert
-
     if (!m_tasks.contains(task)) {
-        int index = m_tasks.size();
+        auto it = qLowerBound(m_tasks.begin(), m_tasks.end(), task, taskLessThan);
+        int index = it - m_tasks.begin();
         beginInsertRows(QModelIndex(), index, index);
-        m_tasks.append(task);
+        m_tasks.insert(it, task);
         endInsertRows();
+
         emit rowCountChanged();
     }
 }
@@ -77,8 +109,9 @@ void SystemTray::TaskListModel::removeTask(Task* task)
     int index = m_tasks.indexOf(task);
     if (index >= 0 ) {
         beginRemoveRows(QModelIndex(), index, index);
-        m_tasks.removeOne(task);
+        m_tasks.removeAt(index);
         endRemoveRows();
+
         emit rowCountChanged();
     }
 }
