@@ -137,12 +137,9 @@ KQuickControlsAddonsComponents.MouseEventListener {
             sniLoader.source = "PlasmoidItem.qml";
             modelData.taskItem.parent = taskItemContainer;
             modelData.taskItem.z = 999;
-
-            console.log("adding Plasmoid");
-
             updatePlasmoidGeometry();
         } else {
-            console.log("DAVE - FAIL");
+            console.warning("Trying to add item to system tray of an unknown type. Ignoring");
         }
     }
 }

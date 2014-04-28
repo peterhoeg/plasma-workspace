@@ -60,13 +60,6 @@ public:
     QList<Task *> tasks;
     QQuickItem* rootItem;
 
-    // Keep references to the list to avoid full refreshes
-    //QList<SystemTray::Task*> tasks;
-//     QList<SystemTray::Task*> shownTasks;
-//     QList<SystemTray::Task*> hiddenTasks;
-    //all tasks that are in hidden categories
-//     QList<SystemTray::Task*> discardedTasks;
-
     QSet<Task::Category> shownCategories;
 
     TaskListModel *shownTasksModel;
@@ -101,11 +94,7 @@ void Host::initTasks()
 {
     QList<SystemTray::Task*> allTasks = tasks();
     foreach (SystemTray::Task *task, allTasks) {
-        if (d->showTask(task)) {
-            d->shownTasksModel->addTask(task);
-        } else {
-            d->hiddenTasksModel->addTask(task);
-        }
+        addTask(task);
     }
 }
 
@@ -135,8 +124,12 @@ void Host::setCategoryShown(int cat, bool shown)
         if (!d->shownCategories.contains((Task::Category)cat)) {
             d->shownCategories.insert((Task::Category)cat);
             foreach (Task *task, d->tasks) {
-                if (d->shownCategories.contains(task->category())) {
-                    addTask(task);
+                if (task->category() == cat) {
+                    if (d->showTask(task)) {
+                        d->shownTasksModel->addTask(task);
+                    } else {
+                        d->hiddenTasksModel->addTask(task);
+                    }
                 }
             }
         }
@@ -144,8 +137,9 @@ void Host::setCategoryShown(int cat, bool shown)
         if (d->shownCategories.contains((Task::Category)cat)) {
             d->shownCategories.remove((Task::Category)cat);
             foreach (Task *task, d->tasks) {
-                if (!d->shownCategories.contains(task->category())) {
-                    removeTask(task);
+                if (task->category() == cat) {
+                    d->shownTasksModel->removeTask(task);
+                    d->hiddenTasksModel->removeTask(task);
                 }
             }
         }
@@ -164,11 +158,18 @@ void Host::addTask(Task *task)
 
     qCDebug(SYSTEMTRAY) << "ST2" << task->name() << "(" << task->taskId() << ")";
 
-    d->tasks.append(task);
-    if (d->showTask(task)) {
-        d->shownTasksModel->addTask(task);
-    } else {
-        d->hiddenTasksModel->addTask(task);
+    d->tasks << task;
+
+    if (d->shownCategories.contains(task->category())) {
+
+        qCDebug(SYSTEMTRAY) << "Adding";
+
+
+        if (d->showTask(task)) {
+            d->shownTasksModel->addTask(task);
+        } else {
+            d->hiddenTasksModel->addTask(task);
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * <one line to give the library's name and an idea of what it does.>
+ * QtQuick friendly list model of Tasks
  * Copyright (C) 2014  David Edmundson <david@davidedmundson.co.uk>
  *
  * This library is free software; you can redistribute it and/or

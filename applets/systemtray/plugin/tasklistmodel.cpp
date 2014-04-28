@@ -1,5 +1,4 @@
 /*
- * <one line to give the library's name and an idea of what it does.>
  * Copyright (C) 2014  David Edmundson <david@davidedmundson.co.uk>
  *
  * This library is free software; you can redistribute it and/or
@@ -66,7 +65,7 @@ TaskListModel::TaskListModel(QObject *parent):
 {
 }
 
-QVariant TaskListModel::data(const QModelIndex& index, int role) const
+QVariant TaskListModel::data(const QModelIndex &index, int role) const
 {
     if (role == Qt::UserRole && index.row() >=0 && index.row() < m_tasks.count()) {
         return QVariant::fromValue(m_tasks.at(index.row()));
@@ -74,9 +73,13 @@ QVariant TaskListModel::data(const QModelIndex& index, int role) const
     return QVariant();
 }
 
-int TaskListModel::rowCount(const QModelIndex& parent) const
+int TaskListModel::rowCount(const QModelIndex &parent) const
 {
-    return m_tasks.size();
+    if (!parent.isValid()) {
+        return m_tasks.size();
+    } else {
+        return 0;
+    }
 }
 
 QHash< int, QByteArray > SystemTray::TaskListModel::roleNames() const
@@ -91,7 +94,7 @@ QList< Task* > TaskListModel::tasks() const
     return m_tasks;
 }
 
-void SystemTray::TaskListModel::addTask(Task* task)
+void SystemTray::TaskListModel::addTask(Task *task)
 {
     if (!m_tasks.contains(task)) {
         auto it = qLowerBound(m_tasks.begin(), m_tasks.end(), task, taskLessThan);
@@ -104,7 +107,7 @@ void SystemTray::TaskListModel::addTask(Task* task)
     }
 }
 
-void SystemTray::TaskListModel::removeTask(Task* task)
+void SystemTray::TaskListModel::removeTask(Task *task)
 {
     int index = m_tasks.indexOf(task);
     if (index >= 0 ) {
