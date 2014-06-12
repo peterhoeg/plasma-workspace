@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QDateTime>
 #include <QCommandLineParser>
 
+#include <Plasma/Theme>
+
 #include <iostream>
 
 #include <signal.h>
@@ -101,5 +103,11 @@ int main(int argc, char* argv[])
     sa.sa_flags = SA_RESTART;
     sigaction(SIGTERM, &sa, nullptr);
     sigaction(SIGUSR1, &sa, nullptr);
+
+    Plasma::Theme plasmaTheme;
+    plasmaTheme.setUseGlobalSettings(false);
+    //TODO: take it from the current plasma theme who the complementary is
+    plasmaTheme.setThemeName("breeze-complementary");
+
     return app.exec();
 }

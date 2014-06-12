@@ -24,5 +24,4 @@ import org.kde.plasma.extras 2.0 as PlasmaExtras
 
 PlasmaExtras.Heading {
     level: 4
-    color: theme.backgroundColor
 }

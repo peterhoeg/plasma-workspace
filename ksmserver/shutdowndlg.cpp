@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QScreen>
 
 #include <Plasma/PluginLoader>
+#include <Plasma/Theme>
 #include <kiconloader.h>
 #include <klocale.h>
 #include <kuser.h>
@@ -99,6 +100,10 @@ KSMShutdownDlg::KSMShutdownDlg( QWindow* parent,
         XInternAtom( QX11Info::display(), "WM_WINDOW_ROLE", False ), XA_STRING, 8, PropModeReplace,
         (unsigned char *)"logoutdialog", strlen( "logoutdialog" ));
 
+    //TODO: take it from the current plasma theme who the complementary is
+    Plasma::Theme plasmaTheme;
+    plasmaTheme.setUseGlobalSettings(false);
+    plasmaTheme.setThemeName("breeze-complementary");
 
     //QQuickView *windowContainer = QQuickView::createWindowContainer(m_view, this);
     //windowContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);

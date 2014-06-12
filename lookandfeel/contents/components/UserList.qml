@@ -93,7 +93,8 @@ ListView {
                     id: frame
                     width: face.width + padding * 6
                     height: face.height + padding * 6
-                    imagePath: "widgets/background"
+                    imagePath: "widgets/media-delegate"
+                    prefix: "picture"
 
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
