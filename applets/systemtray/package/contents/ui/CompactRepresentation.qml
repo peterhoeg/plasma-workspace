@@ -98,6 +98,7 @@ Item {
             id: taskDelegate
             width: gridView.cellWidth
             height: gridView.cellHeight
+            isHiddenItem: false
         }
     }
 

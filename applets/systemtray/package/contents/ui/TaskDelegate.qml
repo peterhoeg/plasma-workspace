@@ -37,6 +37,7 @@ KQuickControlsAddonsComponents.MouseEventListener {
     property variant task: null
     property bool isCurrentTask: (root.expandedTask == modelData)
 
+    //FIXME repuprosing this current unused property to mean "is the expanded view". Rename
     property bool isHiddenItem: false
     property int location: plasmoid.location
 
@@ -101,13 +102,13 @@ KQuickControlsAddonsComponents.MouseEventListener {
     onHeightChanged: updatePlasmoidGeometry()
 
     function updatePlasmoidGeometry() {
-        if (modelData && modelData.taskItem != undefined) {
+        if (modelData && modelData.taskItem != undefined && !isHiddenItem) {
             var _size = Math.min(taskItemContainer.width, taskItemContainer.height);
             var _m = (taskItemContainer.height - _size) / 2
             modelData.taskItem.anchors.verticalCenter = taskItemContainer.verticalCenter;
             modelData.taskItem.x = 0;
             modelData.taskItem.height = _size;
-            modelData.taskItem.width = isHiddenItem ? _size * 1.5 : _size;
+            modelData.taskItem.width = _size;
         }
     }
 
@@ -129,10 +130,14 @@ KQuickControlsAddonsComponents.MouseEventListener {
         if (taskType == SystemTray.Task.TypeStatusItem) {
             sniLoader.source = "StatusNotifierItem.qml";
         } else if (modelData && modelData.taskItem != undefined) {
-            sniLoader.source = "PlasmoidItem.qml";
-            modelData.taskItem.parent = taskItemContainer;
-            modelData.taskItem.z = -1;
-            updatePlasmoidGeometry();
+            if (isHiddenItem) {
+                sniLoader.source = "PlasmoidItemProxy.qml";
+            } else {
+                sniLoader.source = "PlasmoidItem.qml";
+                modelData.taskItem.parent = taskItemContainer;
+                modelData.taskItem.z = -1;
+                updatePlasmoidGeometry();
+            }
         } else {
             console.warning("Trying to add item to system tray of an unknown type. Ignoring");
         }

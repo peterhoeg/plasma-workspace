@@ -64,6 +64,27 @@ Item {
         }
     }
 
+//     ListView {
+//         id: hiddenView
+//         objectName: "hiddenView"
+//         clip: true
+//         width: parent.width
+//
+//         interactive: (contentHeight > height)
+//
+//         anchors {
+//             top: snHeading.bottom
+//             topMargin: units.largeSpacing / 2
+//             bottom: parent.bottom
+//             left: parent.left
+//         }
+//         spacing: units.smallSpacing
+//
+//         model: host.hiddenTasks
+//
+//         delegate: TaskListDelegate {}
+//     }
+
     ListView {
         id: hiddenView
         objectName: "hiddenView"
@@ -80,10 +101,12 @@ Item {
         }
         spacing: units.smallSpacing
 
-        model: host.hiddenTasks
-
-        delegate: TaskListDelegate {}
+        model: host.shownTasks
+        delegate: TaskListDelegate {
+            isHiddenItem: true
+        }
     }
+
 
     PlasmaCore.SvgItem {
         id: separator
