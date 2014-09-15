@@ -21,6 +21,7 @@
 
 #include "plasmawindowedcorona.h"
 #include "plasmawindowedview.h"
+#include "simpleshellcorona.h"
 #include <QDebug>
 #include <QAction>
 #include <QQuickItem>
@@ -101,6 +102,7 @@ void PlasmaWindowedCorona::loadApplet(const QString &applet, const QVariantList 
 
 void PlasmaWindowedCorona::activateRequested(const QStringList &arguments, const QString &workingDirectory)
 {
+    qDebug() << "Activate requested with arguments" << arguments;
     Q_UNUSED(workingDirectory)
     if (!arguments.count() > 1) {
         return;
@@ -158,5 +160,13 @@ void PlasmaWindowedCorona::load()
     }
 }
 
+void PlasmaWindowedCorona::loadFullCorona(const QString &plugin)
+{
+    if (m_simpleShellCoronas.contains(plugin)) {
+        return;
+    }
+
+    m_simpleShellCoronas[plugin] = new SimpleShellCorona(this);
+}
 
 #include "plasmawindowedcorona.moc"

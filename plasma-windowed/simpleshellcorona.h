@@ -19,30 +19,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef PLASMAWINDOWEDCORONA_H
-#define PLASMAWINDOWEDCORONA_H
+#ifndef SIMPLESHELLCORONA_H
+#define SIMPLESHELLCORONA_H
 
 #include <plasma/corona.h>
 #include "plasmaquick/view.h"
 
-class PlasmaWindowedCorona : public Plasma::Corona
+class SimpleShellCorona : public Plasma::Corona
 {
     Q_OBJECT
 
 public:
-    explicit PlasmaWindowedCorona(QObject * parent = 0);
+    explicit SimpleShellCorona(QObject * parent = 0);
     QRect screenGeometry(int id) const;
 
-    void loadApplet(const QString &applet, const QVariantList &arguments);
-    void loadFullCorona(const QString &plugin);
+    void setView(PlasmaQuick::View *view);
+    void loadDefaultLayout();
 
 public Q_SLOTS:
     void load();
-    void activateRequested(const QStringList &arguments, const QString &workingDirectory);
 
 private:
-    Plasma::Containment *m_containment;
-    QHash<QString, Plasma::Corona *> m_simpleShellCoronas;
+    PlasmaQuick::View *m_view;
 };
 
 #endif

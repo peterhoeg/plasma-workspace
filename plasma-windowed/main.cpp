@@ -46,6 +46,11 @@ int main(int argc, char **argv)
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("applet", i18n("The applet to open."));
+
+    QCommandLineOption shellPluginOption(QStringList() << QStringLiteral("p") << QStringLiteral("shell-plugin"),
+                                         i18n("Force loading the given shell plugin"),
+                                         QStringLiteral("plugin"));
+    parser.addOption(shellPluginOption);
     parser.process(app);
 
     if (parser.positionalArguments().isEmpty()) {
@@ -54,15 +59,24 @@ int main(int argc, char **argv)
 
     PlasmaWindowedCorona *corona = new PlasmaWindowedCorona();
 
-    QVariantList args;
-    QStringList::const_iterator constIterator;
-    constIterator = parser.positionalArguments().constBegin();
-    ++constIterator;
-    for (; constIterator != parser.positionalArguments().constEnd();
-           ++constIterator) {
-        args << (*constIterator);
+    const QString shellCorona = parser.value(shellPluginOption);
+
+    //Single applet mode
+    if (shellCorona.isEmpty()) {
+        QVariantList args;
+        QStringList::const_iterator constIterator;
+        constIterator = parser.positionalArguments().constBegin();
+        ++constIterator;
+        for (; constIterator != parser.positionalArguments().constEnd();
+            ++constIterator) {
+            args << (*constIterator);
+        }
+        corona->loadApplet(parser.positionalArguments().first(), args);
+
+    //Shell package mode
+    } else {
+        corona->loadFullCorona(shellCorona);
     }
-    corona->loadApplet(parser.positionalArguments().first(), args);
 
     QObject::connect(&service, &KDBusService::activateRequested, corona, &PlasmaWindowedCorona::activateRequested);
 

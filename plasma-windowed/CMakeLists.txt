@@ -3,6 +3,8 @@ project(plasmawindowed-app)
 set(plasmawindowed-app_SRCS
     plasmawindowedcorona.cpp
     plasmawindowedview.cpp
+    simpleshellcorona.cpp
+    simpleshellview.cpp
     main.cpp
 )
 

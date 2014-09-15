@@ -19,30 +19,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef PLASMAWINDOWEDCORONA_H
-#define PLASMAWINDOWEDCORONA_H
+#include <QUrl>
+#include <QQmlEngine>
+#include <QQmlContext>
 
-#include <plasma/corona.h>
-#include "plasmaquick/view.h"
+#include <QDebug>
+#include <Plasma/Package>
+#include <KLocalizedString>
 
-class PlasmaWindowedCorona : public Plasma::Corona
+#include "simpleshellview.h"
+
+SimpleShellView::SimpleShellView(SimpleShellCorona *simpleShellCorona, QWindow *parent)
+    : PlasmaQuick::View(simpleShellCorona, parent)
 {
-    Q_OBJECT
+    qDebug() << "Setting title of view";
+    setTitle(i18n("Plasma Mediacenter"));
+    qDebug() << "Setting view on corona";
+    simpleShellCorona->setView(this);
+    qDebug() << "setting desktop of root context";
+    engine()->rootContext()->setContextProperty("desktop", this);
+    qDebug() << "Setting source to Desktop.qml";
+    setSource(QUrl::fromLocalFile(simpleShellCorona->package().filePath("views", "Desktop.qml")));
+}
 
-public:
-    explicit PlasmaWindowedCorona(QObject * parent = 0);
-    QRect screenGeometry(int id) const;
+SimpleShellView::~SimpleShellView()
+{
+}
 
-    void loadApplet(const QString &applet, const QVariantList &arguments);
-    void loadFullCorona(const QString &plugin);
-
-public Q_SLOTS:
-    void load();
-    void activateRequested(const QStringList &arguments, const QString &workingDirectory);
-
-private:
-    Plasma::Containment *m_containment;
-    QHash<QString, Plasma::Corona *> m_simpleShellCoronas;
-};
-
-#endif
+#include "simpleshellview.moc"
