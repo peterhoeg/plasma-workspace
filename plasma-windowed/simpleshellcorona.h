@@ -30,7 +30,7 @@ class SimpleShellCorona : public Plasma::Corona
     Q_OBJECT
 
 public:
-    explicit SimpleShellCorona(QObject * parent = 0);
+    explicit SimpleShellCorona(const QString &coronaPlugin, QObject * parent = 0);
     QRect screenGeometry(int id) const;
 
     void setView(PlasmaQuick::View *view);
@@ -40,6 +40,7 @@ public Q_SLOTS:
     void load();
 
 private:
+    QString m_coronaPlugin;
     PlasmaQuick::View *m_view;
 };
 

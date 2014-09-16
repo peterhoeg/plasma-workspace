@@ -28,12 +28,13 @@
 #include <Plasma/Package>
 #include <Plasma/PluginLoader>
 
-SimpleShellCorona::SimpleShellCorona(QObject *parent)
+SimpleShellCorona::SimpleShellCorona(const QString &coronaPlugin, QObject *parent)
     : Plasma::Corona(parent),
+      m_coronaPlugin(coronaPlugin),
       m_view(0)
 {
     Plasma::Package package = Plasma::PluginLoader::self()->loadPackage("Plasma/Shell");
-    package.setPath("org.kde.plasma.mediacenter");
+    package.setPath(m_coronaPlugin);
     setPackage(package);
     load();
 }
@@ -50,7 +51,7 @@ QRect SimpleShellCorona::screenGeometry(int id) const
 
 void SimpleShellCorona::load()
 {
-    loadLayout("plasma-org.kde.plasma.mediacenter-appletsrc");
+    loadLayout("plasmawindowed-" + m_coronaPlugin + "-appletsrc");
 
     bool found = false;
     for (auto c : containments()) {
@@ -63,11 +64,11 @@ void SimpleShellCorona::load()
     if (!found) {
         qDebug() << "Loading default layout";
         loadDefaultLayout();
-        saveLayout("plasma-org.kde.plasma.mediacenter-appletsrc");
+        saveLayout("plasmawindowed-" + m_coronaPlugin + "-appletsrc");
     }
 
     for (auto c : containments()) {
-        qDebug() << "here we are!";
+        qDebug() << "containment found";
         if (c->containmentType() == Plasma::Types::DesktopContainment) {
             m_view = new SimpleShellView(this);
             QAction *removeAction = c->actions()->action("remove");
@@ -77,6 +78,11 @@ void SimpleShellCorona::load()
             setView(m_view);
             m_view->setContainment(c);
             m_view->show();
+            connect(m_view, &QWindow::visibleChanged, [=](bool visible){
+                if (!visible) {
+                    deleteLater();
+                }
+            });
             break;
         }
     }

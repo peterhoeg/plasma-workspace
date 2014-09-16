@@ -166,7 +166,10 @@ void PlasmaWindowedCorona::loadFullCorona(const QString &plugin)
         return;
     }
 
-    m_simpleShellCoronas[plugin] = new SimpleShellCorona(this);
+    m_simpleShellCoronas[plugin] = new SimpleShellCorona(plugin, this);
+    connect(m_simpleShellCoronas[plugin], &QObject::destroyed, [=]() {
+        m_simpleShellCoronas.remove(plugin);
+    });
 }
 
 #include "plasmawindowedcorona.moc"
