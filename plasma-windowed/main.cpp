@@ -22,12 +22,14 @@
 #include <QApplication>
 #include <qcommandlineparser.h>
 #include <qcommandlineoption.h>
+#include <QDebug>
 
 #include <KDBusService>
 #include <KLocalizedString>
 
 #include "plasmawindowedview.h"
 #include "plasmawindowedcorona.h"
+#include "simpleshellcorona.h"
 
 static const char version[] = "1.0";
 
@@ -39,7 +41,7 @@ int main(int argc, char **argv)
     app.setApplicationVersion(version);
     app.setOrganizationDomain(QStringLiteral("kde.org"));
 
-    KDBusService service(KDBusService::Unique);
+    
 
     QCommandLineParser parser;
     parser.setApplicationDescription(i18n("Plasma Windowed"));
@@ -53,16 +55,23 @@ int main(int argc, char **argv)
     parser.addOption(shellPluginOption);
     parser.process(app);
 
-    if (parser.positionalArguments().isEmpty()) {
+    const QString shellCorona = parser.value(shellPluginOption);
+
+    if (parser.positionalArguments().isEmpty() && shellCorona.isEmpty()) {
         parser.showHelp(1);
     }
 
-    PlasmaWindowedCorona *corona = new PlasmaWindowedCorona();
+    Plasma::Theme theme;
+    theme.setUseGlobalSettings(false);
 
-    const QString shellCorona = parser.value(shellPluginOption);
 
     //Single applet mode
     if (shellCorona.isEmpty()) {
+        app.setApplicationName("plasmawindowed");
+        KDBusService service(KDBusService::Unique);
+        PlasmaWindowedCorona *corona = new PlasmaWindowedCorona();
+        QObject::connect(&service, &KDBusService::activateRequested, corona, &PlasmaWindowedCorona::activateRequested);
+
         QVariantList args;
         QStringList::const_iterator constIterator;
         constIterator = parser.positionalArguments().constBegin();
@@ -73,14 +82,18 @@ int main(int argc, char **argv)
         }
         corona->loadApplet(parser.positionalArguments().first(), args);
 
+        const int ret = app.exec();
+        delete corona;
+        return ret;
+
     //Shell package mode
     } else {
-        corona->loadFullCorona(shellCorona);
+        app.setApplicationName("plasmawindowed_" + shellCorona);
+        KDBusService service(KDBusService::Unique);
+
+        SimpleShellCorona *corona = new SimpleShellCorona(shellCorona);
+        const int ret = app.exec();
+        delete corona;
+        return ret;
     }
-
-    QObject::connect(&service, &KDBusService::activateRequested, corona, &PlasmaWindowedCorona::activateRequested);
-
-    const int ret = app.exec();
-    delete corona;
-    return ret;
 }

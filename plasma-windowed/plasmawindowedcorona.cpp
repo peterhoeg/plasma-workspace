@@ -21,7 +21,6 @@
 
 #include "plasmawindowedcorona.h"
 #include "plasmawindowedview.h"
-#include "simpleshellcorona.h"
 #include <QDebug>
 #include <QAction>
 #include <QQuickItem>
@@ -158,18 +157,6 @@ void PlasmaWindowedCorona::load()
             break;
         }
     }
-}
-
-void PlasmaWindowedCorona::loadFullCorona(const QString &plugin)
-{
-    if (m_simpleShellCoronas.contains(plugin)) {
-        return;
-    }
-
-    m_simpleShellCoronas[plugin] = new SimpleShellCorona(plugin, this);
-    connect(m_simpleShellCoronas[plugin], &QObject::destroyed, [=]() {
-        m_simpleShellCoronas.remove(plugin);
-    });
 }
 
 #include "plasmawindowedcorona.moc"

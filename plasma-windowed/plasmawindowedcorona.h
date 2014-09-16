@@ -42,7 +42,6 @@ public Q_SLOTS:
 
 private:
     Plasma::Containment *m_containment;
-    QHash<QString, Plasma::Corona *> m_simpleShellCoronas;
 };
 
 #endif
