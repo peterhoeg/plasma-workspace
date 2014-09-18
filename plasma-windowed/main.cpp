@@ -41,8 +41,6 @@ int main(int argc, char **argv)
     app.setApplicationVersion(version);
     app.setOrganizationDomain(QStringLiteral("kde.org"));
 
-    
-
     QCommandLineParser parser;
     parser.setApplicationDescription(i18n("Plasma Windowed"));
     parser.addVersionOption();
