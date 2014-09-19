@@ -33,7 +33,7 @@ SimpleShellView::SimpleShellView(SimpleShellCorona *simpleShellCorona, QWindow *
     : PlasmaQuick::View(simpleShellCorona, parent)
 {
     qDebug() << "Setting title of view";
-    setTitle(i18n("Plasma Mediacenter"));
+    setTitle(simpleShellCorona->package().metadata().name());
     qDebug() << "Setting view on corona";
     simpleShellCorona->setView(this);
     qDebug() << "setting desktop of root context";
