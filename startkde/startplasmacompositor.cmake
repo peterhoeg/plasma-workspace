@@ -156,7 +156,7 @@ if [ -n "$kcminputrc_mouse_cursortheme" -o -n "$kcminputrc_mouse_cursorsize" ]; 
     fi
 fi
 
-if [ "$kcmfonts_general_forcefontdpiwayland" -ne 0 ]; then
+if [ "${kcmfonts_general_forcefontdpiwayland:-0}" -ne 0 ]; then
     export QT_WAYLAND_FORCE_DPI=$kcmfonts_general_forcefontdpiwayland
 else
     export QT_WAYLAND_FORCE_DPI=96

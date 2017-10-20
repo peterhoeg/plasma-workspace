@@ -201,7 +201,7 @@ if test -n "$kcminputrc_mouse_cursortheme" -o -n "$kcminputrc_mouse_cursorsize" 
     fi
 fi
 
-if [ "$kcmfonts_general_forcefontdpi" -ne 0 ]; then
+if [ "${kcmfonts_general_forcefontdpi:-0}" -ne 0 ]; then
     @NIXPKGS_XRDB@ -quiet -merge -nocpp <<EOF
 Xft.dpi: $kcmfonts_general_forcefontdpi
 EOF
