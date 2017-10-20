@@ -22,7 +22,6 @@ unset DYLD_FORCE_FLAT_NAMESPACE
 kcheckrunning_result=$?
 if [ $kcheckrunning_result -eq 0 ]; then
     echo "KDE seems to be already running on this display."
-    @NIXPKGS_XMESSAGE@ -geometry 500x100 "KDE seems to be already running on this display." > /dev/null 2>/dev/null
     exit 1
 elif [ $kcheckrunning_result -eq 2 ]; then
     echo "\$DISPLAY is not set or cannot connect to the X server."
@@ -163,7 +162,7 @@ EOF
 fi
 
 if ! @CMAKE_INSTALL_FULL_BINDIR@/kstartupconfig5; then
-    @NIXPKGS_XMESSAGE@ -geometry 500x100 "kstartupconfig5 does not exist or fails. The error code is $returncode. Check your installation."
+    echo "kstartupconfig5 does not exist or fails. The error code is $returncode. Check your installation." 1>&2
     exit 1
 fi
 if [ -r "$XDG_CONFIG_HOME/startupconfig" ]; then
@@ -303,7 +302,6 @@ if ! @NIXPKGS_DBUS_UPDATE_ACTIVATION_ENVIRONMENT@ --systemd --all; then
   # Startup error
   echo 'startkde: Could not sync environment to dbus.'  1>&2
   test -n "$ksplash_pid" && kill "$ksplash_pid" 2>/dev/null
-  @NIXPKGS_XMESSAGE@ -geometry 500x100 "Could not sync environment to dbus."
   exit 1
 fi
 
@@ -314,7 +312,6 @@ if test $? -ne 0; then
   # Startup error
   echo 'startkde: Could not start kdeinit5. Check your installation.'  1>&2
   test -n "$ksplash_pid" && kill "$ksplash_pid" 2>/dev/null
-  @NIXPKGS_XMESSAGE@ -geometry 500x100 "Could not start kdeinit5. Check your installation."
   exit 1
 fi
 
@@ -344,7 +341,6 @@ if test $? -eq 255; then
   # Startup error
   echo 'startkde: Could not start ksmserver. Check your installation.'  1>&2
   test -n "$ksplash_pid" && kill "$ksplash_pid" 2>/dev/null
-  @NIXPKGS_XMESSAGE@ -geometry 500x100 "Could not start ksmserver. Check your installation."
 fi
 
 #Anything after here is logout/shutdown
