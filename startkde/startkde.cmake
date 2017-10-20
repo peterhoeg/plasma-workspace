@@ -70,11 +70,12 @@ fi
 @NIXPKGS_KBUILDSYCOCA5@
 
 # Set the default GTK 2 theme
-if ! [ -e "$HOME/.gtkrc-2.0" ] \
-     && [ -e /run/current-system/sw/share/themes/Breeze/gtk-2.0/gtkrc ]; then
-    cat >"$HOME/.gtkrc-2.0" <<EOF
+gtkrc2="$HOME/.gtkrc-2.0"
+breeze_gtkrc2="/run/current-system/sw/share/themes/Breeze/gtk-2.0/gtkrc"
+if ! [ -e "$gtkrc2" ] && [ -e "$breeze_gtkrc2" ]; then
+    cat >"$gtkrc2" <<EOF
 # Default GTK+ 2 config for NixOS KDE 5
-include "/run/current-system/sw/share/themes/Breeze/gtk-2.0/gtkrc"
+include "$breeze_gtkrc2"
 style "user-font"
 {
   font_name="Sans Serif Regular"
@@ -91,10 +92,12 @@ gtk-button-images=1
 EOF
 fi
 
-if ! [ -e "$XDG_CONFIG_HOME/gtk-3.0/settings.ini" ] \
-       && [ -e /run/current-system/sw/share/themes/Breeze/gtk-3.0 ]; then
-    mkdir -p "$XDG_CONFIG_HOME/gtk-3.0"
-    cat >"$XDG_CONFIG_HOME/gtk-3.0/settings.ini" <<EOF
+# Set the default GTK 3 theme
+gtk3_settings="$XDG_CONFIG_HOME/gtk-3.0/settings.ini"
+breeze_gtk3="/run/current-system/sw/share/themes/Breeze/gtk-3.0"
+if ! [ -e "$gtk3_settings" ] && [ -e "$breeze_gtk" ]; then
+    mkdir -p $(dirname "$gtk3_settings")
+    cat >"$gtk3_settings" <<EOF
 [Settings]
 gtk-font-name=Sans Serif Regular 10
 gtk-theme-name=Breeze
@@ -107,8 +110,9 @@ gtk-button-images=1
 EOF
 fi
 
-if ! [ -e "$XDG_CONFIG_HOME/kcminputrc" ]; then
-    cat >"$XDG_CONFIG_HOME/kcminputrc" <<EOF
+kcminputrc="$XDG_CONFIG_HOME/kcminputrc"
+if ! [ -e "$kcminputrc" ]; then
+    cat >"$kcminputrc" <<EOF
 [Mouse]
 cursorTheme=breeze_cursors
 cursorSize=0
