@@ -272,6 +272,9 @@ export KDE_SESSION_UID
 XDG_CURRENT_DESKTOP=KDE
 export XDG_CURRENT_DESKTOP
 
+# Enforce xcb QPA. Helps switching between Wayland and X sessions.
+export QT_QPA_PLATFORM=xcb
+
 # Source scripts found in <config locations>/plasma-workspace/env/*.sh
 # (where <config locations> correspond to the system and user's configuration
 # directories, as identified by Qt's qtpaths,  e.g.  $HOME/.config
