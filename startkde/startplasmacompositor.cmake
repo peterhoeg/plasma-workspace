@@ -1,118 +1,174 @@
 #!/bin/sh
 #
-#  DEFAULT Plasma STARTUP SCRIPT ( @PROJECT_VERSION@ )
+#  NIXPKGS Plasma STARTUP SCRIPT ( @PROJECT_VERSION@ )
 #
 
-# We need to create config folder so we can write startupconfigkeys
-if [  ${XDG_CONFIG_HOME} ]; then
-  configDir=$XDG_CONFIG_HOME;
-else
-  configDir=${HOME}/.config; #this is the default, http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+# we have to unset this for Darwin since it will screw up KDE's dynamic-loading
+unset DYLD_FORCE_FLAT_NAMESPACE
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+@NIXPKGS_MKDIR@ -p "$XDG_CONFIG_HOME"
+
+# The KDE icon cache is supposed to update itself
+# automatically, but it uses the timestamp on the icon
+# theme directory as a trigger.  Since in Nix the
+# timestamp is always the same, this doesn't work.  So as
+# a workaround, nuke the icon cache on login.  This isn't
+# perfect, since it may require logging out after
+# installing new applications to update the cache.
+# See http://lists-archives.org/kde-devel/26175-what-when-will-icon-cache-refresh.html
+rm -fv $HOME/.cache/icon-cache.kcache
+
+# xdg-desktop-settings generates this empty file but
+# it makes kbuildsyscoca5 fail silently. To fix this
+# remove that menu if it exists.
+rm -fv $HOME/.config/menus/applications-merged/xdg-desktop-menu-dummy.menu
+
+# Remove the kbuildsyscoca5 cache. It will be regenerated immediately after.
+# This is necessary for kbuildsyscoca5 to recognize that software that has been removed.
+rm -fv $HOME/.cache/ksycoca*
+
+# Qt writes a weird ‘libraryPath’ line to
+# ~/.config/Trolltech.conf that causes the KDE plugin
+# paths of previous KDE invocations to be searched.
+# Obviously using mismatching KDE libraries is potentially
+# disastrous, so here we nuke references to the Nix store
+# in Trolltech.conf.  A better solution would be to stop
+# Qt from doing this wackiness in the first place.
+if [ -e $XDG_CONFIG_HOME/Trolltech.conf ]; then
+    @NIXPKGS_SED@ -e '/nix\\store\|nix\/store/ d' -i $XDG_CONFIG_HOME/Trolltech.conf
+fi
+
+@NIXPKGS_KBUILDSYCOCA5@
+
+# Set the default GTK 2 theme
+gtkrc2="$HOME/.gtkrc-2.0"
+breeze_gtkrc2="/run/current-system/sw/share/themes/Breeze/gtk-2.0/gtkrc"
+if ! [ -e "$gtkrc2" ] && [ -e "$breeze_gtkrc2" ]; then
+    cat >"$gtkrc2" <<EOF
+# Default GTK+ 2 config for NixOS KDE 5
+include "$breeze_gtkrc2"
+style "user-font"
+{
+  font_name="Sans Serif Regular"
+}
+widget_class "*" style "user-font"
+gtk-font-name="Sans Serif Regular 10"
+gtk-theme-name="Breeze"
+gtk-icon-theme-name="breeze"
+gtk-fallback-icon-theme="hicolor"
+gtk-cursor-theme-name="breeze_cursors"
+gtk-toolbar-style=GTK_TOOLBAR_ICONS
+gtk-menu-images=1
+gtk-button-images=1
+EOF
 fi
 sysConfigDirs=${XDG_CONFIG_DIRS:-/etc/xdg}
 
-# We need to create config folder so we can write startupconfigkeys
-mkdir -p $configDir
+# Set the default GTK 3 theme
+gtk3_settings="$XDG_CONFIG_HOME/gtk-3.0/settings.ini"
+breeze_gtk3="/run/current-system/sw/share/themes/Breeze/gtk-3.0"
+if ! [ -e "$gtk3_settings" ] && [ -e "$breeze_gtk" ]; then
+    mkdir -p $(dirname "$gtk3_settings")
+    cat >"$gtk3_settings" <<EOF
+[Settings]
+gtk-font-name=Sans Serif Regular 10
+gtk-theme-name=Breeze
+gtk-icon-theme-name=breeze
+gtk-fallback-icon-theme=hicolor
+gtk-cursor-theme-name=breeze_cursors
+gtk-toolbar-style=GTK_TOOLBAR_ICONS
+gtk-menu-images=1
+gtk-button-images=1
+EOF
+fi
+
+kcminputrc="$XDG_CONFIG_HOME/kcminputrc"
+if ! [ -e "$kcminputrc" ]; then
+    cat >"$kcminputrc" <<EOF
+[Mouse]
+cursorTheme=breeze_cursors
+cursorSize=0
+EOF
+fi
 
 #This is basically setting defaults so we can use them with kstartupconfig5
-cat >$configDir/startupconfigkeys <<EOF
+cat >"$XDG_CONFIG_HOME/startupconfigkeys" <<EOF
 kcminputrc Mouse cursorTheme 'breeze_cursors'
 kcminputrc Mouse cursorSize ''
-ksplashrc KSplash Theme Breeze
+ksplashrc KSplash Theme org.kde.breeze.desktop
 ksplashrc KSplash Engine KSplashQML
-kcmfonts General forceFontDPIWayland 0
+kdeglobals KScreen ScreenScaleFactors ''
+kcmfonts General forceFontDPI 0
+kcmfonts General dontChangeAASettings true
 EOF
 
 # preload the user's locale on first start
-plasmalocalerc=$configDir/plasma-localerc
-test -f $plasmalocalerc || {
-cat >$plasmalocalerc <<EOF
+plasmalocalerc="$XDG_CONFIG_HOME/plasma-localerc"
+if ! [ -f "$plasmalocalerc" ]; then
+    cat >"$plasmalocalerc" <<EOF
 [Formats]
 LANG=$LANG
 EOF
-}
+fi
 
 # export LC_* variables set by kcmshell5 formats into environment
 # so it can be picked up by QLocale and friends.
-exportformatssettings=$configDir/plasma-locale-settings.sh
-test -f $exportformatssettings && {
-    . $exportformatssettings
-}
-
-# Write a default kdeglobals file to set up the font
-kdeglobalsfile=$configDir/kdeglobals
-test -f $kdeglobalsfile || {
-cat >$kdeglobalsfile <<EOF
-[General]
-XftAntialias=true
-XftHintStyle=hintmedium
-XftSubPixel=none
-EOF
-}
-
-# Make sure the Oxygen font is installed
-# This is necessary for setups where CMAKE_INSTALL_PREFIX
-# is not in /usr. fontconfig looks in /usr, ~/.fonts and
-# $XDG_DATA_HOME for fonts. In this case, we symlink the
-# Oxygen font under ${XDG_DATA_HOME} and make it known to
-# fontconfig
-
-usr_share="/usr/share"
-install_share="@KDE_INSTALL_FULL_DATADIR@"
-
-if [ ! $install_share = $usr_share ]; then
-
-    if [ ${XDG_DATA_HOME} ]; then
-        fontsDir="${XDG_DATA_HOME}/fonts"
-    else
-        fontsDir="${HOME}/.fonts"
-    fi
-
-    test -d $fontsDir || {
-        mkdir -p $fontsDir
-    }
-
-    oxygenDir=$fontsDir/truetype/oxygen
-    prefixDir="@KDE_INSTALL_FULL_DATADIR@/fonts/truetype/oxygen"
-
-    # if the oxygen dir doesn't exist, create a symlink to be sure that the
-    # Oxygen font is available to the user
-    test -d $oxygenDir || test -d $prefixDir && {
-        test -h $oxygenDir || ln -s $prefixDir $oxygenDir && fc-cache $oxygenDir
-    }
+exportformatssettings="$XDG_CONFIG_HOME/plasma-locale-settings.sh"
+if [ -r "$exportformatssettings" ]; then
+    . "$exportformatssettings"
 fi
 
-kstartupconfig5
+# Write a default kdeglobals file to set up the font
+kdeglobalsfile="$XDG_CONFIG_HOME/kdeglobals"
+if ! [ -f "$kdeglobalsfile" ]; then
+    cat >"$kdeglobalsfile" <<EOF
+[General]
+fixed=Monospace,10,-1,5,50,0,0,0,0,0,Regular
+font=Sans Serif,10,-1,5,50,0,0,0,0,0,Regular
+menuFont=Sans Serif,10,-1,5,50,0,0,0,0,0,Regular
+smallestReadableFont=Sans Serif,8,-1,5,50,0,0,0,0,0,Regular
+toolBarFont=Sans Serif,8,-1,5,50,0,0,0,0,0,Regular
+
+[WM]
+activeFont=Noto Sans,12,-1,5,50,0,0,0,0,0,Bold
+EOF
+fi
+
+@CMAKE_INSTALL_FULL_BINDIR@/kstartupconfig5
 returncode=$?
 if test $returncode -ne 0; then
     exit 1
 fi
-[ -r $configDir/startupconfig ] && . $configDir/startupconfig
+if [ -r "$XDG_CONFIG_HOME/startupconfig" ]; then
+    . "$XDG_CONFIG_HOME/startupconfig"
+fi
 
 #Manually disable auto scaling because we are scaling above
 #otherwise apps that manually opt in for high DPI get auto scaled by the developer AND scaled by the wl_output
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 
-# XCursor mouse theme needs to be applied here to work even for kded or ksmserver
-if test -n "$kcminputrc_mouse_cursortheme" -o -n "$kcminputrc_mouse_cursorsize" ; then
-    @EXPORT_XCURSOR_PATH@
+XCURSOR_PATH=~/.icons
+IFS=":" read -r -a xdgDirs <<< "$XDG_DATA_DIRS"
+for xdgDir in "${xdgDirs[@]}"; do
+    XCURSOR_PATH="$XCURSOR_PATH:$xdgDir/icons"
+done
+export XCURSOR_PATH
 
-    # TODO: is kapplymousetheme a core app?
+# XCursor mouse theme needs to be applied here to work even for kded or ksmserver
+if [ -n "$kcminputrc_mouse_cursortheme" -o -n "$kcminputrc_mouse_cursorsize" ]; then
     #kapplymousetheme "$kcminputrc_mouse_cursortheme" "$kcminputrc_mouse_cursorsize"
-    if test $? -eq 10; then
-        XCURSOR_THEME=breeze_cursors
-        export XCURSOR_THEME
-    elif test -n "$kcminputrc_mouse_cursortheme"; then
-        XCURSOR_THEME="$kcminputrc_mouse_cursortheme"
-        export XCURSOR_THEME
+    if [ $? -eq 10 ]; then
+        export XCURSOR_THEME=breeze_cursors
+    elif [ -n "$kcminputrc_mouse_cursortheme" ]; then
+        export XCURSOR_THEME="$kcminputrc_mouse_cursortheme"
     fi
-    if test -n "$kcminputrc_mouse_cursorsize"; then
-        XCURSOR_SIZE="$kcminputrc_mouse_cursorsize"
-        export XCURSOR_SIZE
+    if [ -n "$kcminputrc_mouse_cursorsize" ]; then
+        export XCURSOR_SIZE="$kcminputrc_mouse_cursorsize"
     fi
 fi
 
-if test "$kcmfonts_general_forcefontdpiwayland" -ne 0; then
+if [ "${kcmfonts_general_forcefontdpiwayland:-0}" -ne 0 ]; then
     export QT_WAYLAND_FORCE_DPI=$kcmfonts_general_forcefontdpiwayland
 else
     export QT_WAYLAND_FORCE_DPI=96
@@ -120,12 +176,12 @@ fi
 
 # Get a property value from org.freedesktop.locale1
 queryLocale1() {
-    qdbus --system org.freedesktop.locale1 /org/freedesktop/locale1 "$1"
+    @NIXPKGS_QDBUS@ --system org.freedesktop.locale1 /org/freedesktop/locale1 "$1"
 }
 
 # Query whether org.freedesktop.locale1 is available. If it is, try to
 # set XKB_DEFAULT_{MODEL,LAYOUT,VARIANT,OPTIONS} accordingly.
-if qdbus --system org.freedesktop.locale1 >/dev/null 2>/dev/null; then
+if @NIXPKGS_QDBUS@ --system org.freedesktop.locale1 >/dev/null 2>/dev/null; then
     # Do not overwrite existing values. There is no point in setting only some
     # of them as then they would not match anymore.
     if [ -z "${XKB_DEFAULT_MODEL}" -a -z "${XKB_DEFAULT_LAYOUT}" -a \
@@ -141,41 +197,10 @@ if qdbus --system org.freedesktop.locale1 >/dev/null 2>/dev/null; then
     fi
 fi
 
-# Source scripts found in <config locations>/plasma-workspace/env/*.sh
-# (where <config locations> correspond to the system and user's configuration
-# directories, as identified by Qt's qtpaths,  e.g.  $HOME/.config
-# and /etc/xdg/ on Linux)
-#
-# This is where you can define environment variables that will be available to
-# all KDE programs, so this is where you can run agents using e.g. eval `ssh-agent`
-# or eval `gpg-agent --daemon`.
-# Note: if you do that, you should also put "ssh-agent -k" as a shutdown script
-#
-# (see end of this file).
-# For anything else (that doesn't set env vars, or that needs a window manager),
-# better use the Autostart folder.
-
-scriptpath=`echo "$configDir:$sysConfigDirs" | tr ':' '\n'`
-
-for prefix in `echo $scriptpath`; do
-  for file in "$prefix"/plasma-workspace/env/*.sh; do
-    test -r "$file" && . "$file" || true
-  done
-done
-
 echo 'startplasmacompositor: Starting up...'  1>&2
 
-# Make sure that the KDE prefix is first in XDG_DATA_DIRS and that it's set at all.
-# The spec allows XDG_DATA_DIRS to be not set, but X session startup scripts tend
-# to set it to a list of paths *not* including the KDE prefix if it's not /usr or
-# /usr/local.
-if test -z "$XDG_DATA_DIRS"; then
-XDG_DATA_DIRS="@KDE_INSTALL_FULL_DATADIR@:/usr/share:/usr/local/share"
-fi
-export XDG_DATA_DIRS
-
 # Make sure that D-Bus is running
-if qdbus >/dev/null 2>/dev/null; then
+if @NIXPKGS_QDBUS@ >/dev/null 2>/dev/null; then
     : # ok
 else
     echo 'startplasmacompositor: Could not start D-Bus. Can you call qdbus?'  1>&2
@@ -212,7 +237,7 @@ export KDE_FULL_SESSION
 KDE_SESSION_VERSION=5
 export KDE_SESSION_VERSION
 
-KDE_SESSION_UID=`id -ru`
+KDE_SESSION_UID=$(@NIXPKGS_ID@ -ru)
 export KDE_SESSION_UID
 
 XDG_CURRENT_DESKTOP=KDE
@@ -221,20 +246,41 @@ export XDG_CURRENT_DESKTOP
 XDG_SESSION_TYPE=wayland
 export XDG_SESSION_TYPE
 
+# Source scripts found in <config locations>/plasma-workspace/env/*.sh
+# (where <config locations> correspond to the system and user's configuration
+# directories, as identified by Qt's qtpaths,  e.g.  $HOME/.config
+# and /etc/xdg/ on Linux)
+#
+# This is where you can define environment variables that will be available to
+# all KDE programs, so this is where you can run agents using e.g. eval `ssh-agent`
+# or eval `gpg-agent --daemon`.
+# Note: if you do that, you should also put "ssh-agent -k" as a shutdown script
+#
+# (see end of this file).
+# For anything else (that doesn't set env vars, or that needs a window manager),
+# better use the Autostart folder.
+
+IFS=":" read -r -a scriptpath <<< $(@NIXPKGS_QTPATHS@ --paths GenericConfigLocation)
+# Add /env/ to the directory to locate the scripts to be sourced
+for prefix in "${scriptpath[@]}"; do
+    for file in "$prefix"/plasma-workspace/env/*.sh; do
+        if [ -r "$file" ]; then
+            . "$file"
+        fi
+    done
+done
+
 # kwin_wayland can possibly also start dbus-activated services which need env variables.
 # In that case, the update in startplasma might be too late.
-if which dbus-update-activation-environment >/dev/null 2>/dev/null ; then
-    dbus-update-activation-environment --systemd --all
-else
-    @CMAKE_INSTALL_FULL_LIBEXECDIR@/ksyncdbusenv
-fi
-if test $? -ne 0; then
-  # Startup error
-  echo 'startplasmacompositor: Could not sync environment to dbus.'  1>&2
-  exit 1
+if ! @NIXPKGS_DBUS_UPDATE_ACTIVATION_ENVIRONMENT@ --systemd --all; then
+    # Startup error
+    echo 'startkde: Could not sync environment to dbus.'  1>&2
+    test -n "$ksplash_pid" && kill "$ksplash_pid" 2>/dev/null
+    echo 'startplasmacompositor: Could not sync environment to dbus.'  1>&2
+    exit 1
 fi
 
-@KWIN_WAYLAND_BIN_PATH@ --xwayland --libinput --exit-with-session=@CMAKE_INSTALL_FULL_LIBEXECDIR@/startplasma
+@KWIN_WAYLAND_BIN_PATH@ --xwayland --libinput --exit-with-session=@NIXPKGS_STARTPLASMA@
 
 echo 'startplasmacompositor: Shutting down...'  1>&2
 

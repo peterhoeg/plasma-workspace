@@ -147,5 +147,5 @@ int main()
     fclose( keys );
     fclose( config );
   doit:
-    return system( "kdostartupconfig5" );
+    return system( NIXPKGS_KDOSTARTUPCONFIG5 );
     }
